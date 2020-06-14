@@ -738,8 +738,21 @@ void SOR(FullMatrix& A, Wector& x0, Wector& b, double omega, double etol, double
 
 //Zadanie 11
 
+
+//a musi być większe od 6
+const int a = 20;
+const int tmax = 1;
+const int D = 1;
+const double b = 0.1;
+
+double rozw_analityczne(double x, double t)
+{
+	return 0.5 * exp(((D * t) / (b * b)) - (x / b)) * erfc((((2 * D * t) / (b)-x)) / (2 * sqrt(D * t)));
+}
+
 int main()
 {
+
 
 
 
