@@ -3,6 +3,7 @@
 #include <vector>
 #include <array>
 #include <algorithm>
+#include <cassert>
 
 using namespace std;
 
@@ -740,7 +741,7 @@ void SOR(FullMatrix& A, Wector& x0, Wector& b, double omega, double etol, double
 
 
 //a musi być większe od 6
-const int a = 20;
+const int a = 7;
 const int tmax = 1;
 const int D = 1;
 const double b = 0.1;
@@ -776,19 +777,25 @@ public:
 		for (int i = 0; i < deltatcount; i++)
 		{
 			vector<node>* temporary = new vector<node>;
-			temporary->reserve(hcount);
+			temporary->reserve(hcount + 2);
 
-			double current_h = 0.;
+			double current_h = -a;
+
+			node firstnode = { current_t, current_h - h, NAN };
+			temporary->push_back(firstnode);
 
 			for (int j = 0; j < hcount; j++)
 			{
-				
-				node tempnode = { current_t, current_h, NAN};
+
+				node tempnode = { current_t, current_h, NAN };
 
 				temporary->push_back(tempnode);
 
 				current_h += h;
 			}
+
+			node lastnode = { current_t, current_h + h, NAN };
+			temporary->push_back(lastnode);
 
 			body.push_back(temporary);
 
@@ -800,17 +807,136 @@ public:
 	{
 		for (auto it = body.begin(); it != body.end(); it++)
 		{
-			delete *it;
+			delete* it;
 		}
 	}
 
-	const node* getnode(int x, int y)
+	node* const getnode(int x, int y)
 	{
 		return &(body[x]->at(y));
 	}
+
+	size_t getxsize()
+	{
+		return body.size();
+	}
+
+	size_t getysize()
+	{
+		return body[0]->size();
+	}
 };
+
+
+
+net* bezposrednia_eulera(double h, double deltat)
+{
+	const double lambda = D * (deltat / (h * h));
+	assert(0.5 >= lambda);
+	assert(0.43 > lambda);
+	assert(0.37 < lambda);
+
+
+	int hcount = (2. * a) / h;
+	int deltatcount = tmax / deltat;
+
+	//inicjalizacja
+	net* localnet = new net(hcount, h, deltatcount, deltat);
+	for (int i = 0; i < localnet->getysize(); i++)
+	{
+		auto tnode = localnet->getnode(0, i);
+		tnode->value = warunek_poczatkowy(tnode->x);
+	}
+
+	//rozwiązanie
+	for (int i = 1; i < localnet->getxsize(); i++)
+	{
+		for (int j = 1; j < localnet->getysize() - 1; j++)
+		{
+			auto node1 = localnet->getnode(i - 1, j - 1);
+			auto node2 = localnet->getnode(i - 1, j);
+			auto node3 = localnet->getnode(i - 1, j + 1);
+
+			auto tnode = localnet->getnode(i, j);
+			tnode->value = (lambda * node1->value) + ((1 - (2 * lambda)) * node2->value) + (lambda * node3->value);
+		}
+
+		//warunki brzegowe
+		localnet->getnode(i, 0)->value = 0;
+		localnet->getnode(i, localnet->getysize() - 1)->value = 0;
+	}
+
+	return localnet;
+
+}
+
+void dumpnet(net* paramnet, const char* filename)
+{
+	FILE* plik;
+	fopen_s(&plik, filename, "w");
+
+	fprintf_s(plik, ",");
+	for (int i = 0; i < paramnet->getysize(); i++)
+	{
+		fprintf_s(plik, "%.16lf,", paramnet->getnode(0, i)->x);
+	}
+	fprintf_s(plik, "\n");
+
+	for (int i = 0; i < paramnet->getxsize(); i++)
+	{
+		fprintf_s(plik, "%.16lf,", paramnet->getnode(i, 0)->t);
+		for (int j = 0; j < paramnet->getysize(); j++)
+		{
+			fprintf_s(plik, "%.16lf,", paramnet->getnode(i, j)->value);
+		}
+		fprintf_s(plik, "\n");
+	}
+
+	fclose(plik);
+}
+
+net* analityczna(double h, double deltat)
+{
+
+	int hcount = (2. * a) / h;
+	int deltatcount = tmax / deltat;
+
+	net* localnet = new net(hcount, h, deltatcount, deltat);
+
+	//rozwiązanie
+	for (int i = 0; i < localnet->getxsize(); i++)
+	{
+		for (int j = 0; j < localnet->getysize(); j++)
+		{
+			auto tnode = localnet->getnode(i, j);
+			tnode->value = rozw_analityczne(tnode->x, tnode->t);
+		}
+
+	}
+
+	return localnet;
+
+}
 
 int main()
 {
+	double h = 0.05;
+	double deltat = h * h * 0.4;
 
+	cout << "start" << endl;
+	auto bezp = bezposrednia_eulera(h, deltat);
+	dumpnet(bezp, "tempbezp.csv");
+	delete bezp;
+
+	cout << "bezp" << endl;
+	auto anal = analityczna(h, deltat);
+	cout << "anal" << endl;
+
+	
+	dumpnet(anal, "tempanal.csv");
+
+	
+	delete anal;
+
+	return 0;
 }
