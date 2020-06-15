@@ -956,6 +956,7 @@ net* analityczna(double h, double deltat)
 
 }
 
+//TODO: Poprawić
 net* crankanicolson_thomasa(double h, double deltat)
 {
 	const double lambda = D * (deltat / (h * h));
@@ -1007,8 +1008,12 @@ net* crankanicolson_thomasa(double h, double deltat)
 
 		vector<double> b;
 		b.reserve(localnet->getysize());
-		b.push_back(0);
-
+		//b.push_back(0);
+		{
+			auto node2 = localnet->getnode(i - 1, 0);
+			auto node3 = localnet->getnode(i - 1, 1);
+			b.push_back(-(((1 - lambda) * node2->value) + ((lambda / 2) * node3->value)));
+		}
 		for (int j = 1; j < localnet->getysize() - 1; j++)
 		{
 			auto node1 = localnet->getnode(i - 1, j - 1);
@@ -1018,10 +1023,121 @@ net* crankanicolson_thomasa(double h, double deltat)
 			b.push_back(-(((lambda / 2) * node1->value) + ((1 - lambda) * node2->value) + ((lambda / 2) * node3->value)));
 		}
 
-		b.push_back(0);
-
+		//b.push_back(0);
+		{
+			auto node1 = localnet->getnode(i - 1, localnet->getysize() - 2);
+			auto node2 = localnet->getnode(i - 1, localnet->getysize() - 1);
+			b.push_back(-(((lambda / 2) * node1->value) + ((1 - lambda) * node2->value)));
+		}
 		node_solver(tri, du, b, localnet->body[i]);
 
+	}
+
+	return localnet;
+}
+
+net* crankanicolson_gaussa_seidela(double h, double deltat)
+{
+	const double lambda = D * (deltat / (h * h));
+	assert(lambda < 1.2);
+	assert(lambda > 0.8);
+
+
+	int hcount = (2. * a) / h;
+	int deltatcount = tmax / deltat;
+
+	//inicjalizacja
+	net* localnet = new net(hcount, h, deltatcount, deltat);
+	for (int i = 0; i < localnet->getysize(); i++)
+	{
+		auto tnode = localnet->getnode(0, i);
+		tnode->value = warunek_poczatkowy(tnode->x);
+	}
+
+	//TUpper U(localnet->getysize());
+	FullMatrix LU(localnet->getysize());
+	LU.zapisz(0, 1) = 0;
+	for (int i = 1; i < localnet->getysize() - 1; i++)
+	{
+		LU.zapisz(i, i + 1) = lambda / 2;
+	}
+	for (int i = 1; i < localnet->getysize() - 1; i++)
+	{
+		LU.zapisz(i, i - 1) = lambda / 2;
+	}
+	LU.zapisz(localnet->getysize()-1, localnet->getysize() - 2) = 0;
+	Diagonal dinv(localnet->getysize());
+	for (int i = 1; i < localnet->getysize()-1; i++)
+	{
+		dinv.zapisz(i, i) = -(1 + lambda);
+	}
+	dinv.zapisz(0, 0) = 1;
+	dinv.zapisz(localnet->getysize()-1, localnet->getysize()-1) = 1;
+	dinv.Invert();
+
+
+
+	//rozwiązanie
+	for (int i = 1; i < localnet->getxsize(); i++)
+	{
+		Wector x(localnet->getysize());
+		for ( int j = 0; j < localnet->getysize(); j++)
+		{
+			x.zapisz(j) = localnet->getnode(i - 1, j)->value;
+		}
+		unsigned int n = -1;
+		Wector x1(x);
+		Wector E(localnet->getysize());
+		Wector F(localnet->getysize());
+
+		unsigned int iter = 400;
+		double ftol = 1e-15;
+		double etol = 1e-15;
+
+		Wector b(localnet->getysize());
+		{
+			auto node2 = localnet->getnode(i - 1, 0);
+			auto node3 = localnet->getnode(i - 1, 1);
+			b.zapisz(0) = -(((1 - lambda) * node2->value) + ((lambda / 2) * node3->value));
+		}
+		for (int j = 1; j < localnet->getysize() - 1; j++)
+		{
+			auto node1 = localnet->getnode(i - 1, j - 1);
+			auto node2 = localnet->getnode(i - 1, j);
+			auto node3 = localnet->getnode(i - 1, j + 1);
+
+			b.zapisz(j) = -(((lambda / 2) * node1->value) + ((1 - lambda) * node2->value) + ((lambda / 2) * node3->value));
+		}
+		{
+			auto node1 = localnet->getnode(i - 1, localnet->getysize() - 2);
+			auto node2 = localnet->getnode(i - 1, localnet->getysize() - 1);
+			b.zapisz(localnet->getysize() -1) = -(((lambda / 2) * node1->value) + ((1 - lambda) * node2->value));
+		}
+
+		do
+		{
+			for (unsigned int k = 0; k < x.siz; k++)
+			{
+				double temp = 0;
+				for (unsigned int l = 0; l < x.siz; l++)
+					temp += LU.at(k, l) * x.at(l);
+				x.zapisz(k) = dinv.at(k, k) * (b.at(k) - temp);
+			}
+			x.SubAbs(x1, E);
+			LU.Multiply(x, F);
+			F.SubAbs(b, F);
+			n++;
+			x1 = x;
+		} while ((n < iter) && (E.Max() > etol) && (F.Max() > ftol));
+		
+		for (int j = 0; j < localnet->getysize(); j++)
+		{
+			localnet->getnode(i, j)->value = x.at(j);
+		}
+		if (i % 20 == 0)
+		{
+			printf_s("Ukonczono w %lf%%\n", (((double) i / localnet->getxsize()) * 100));
+		}
 	}
 
 	return localnet;
@@ -1038,9 +1154,13 @@ int main()
 	dumpnet(bezp, "tempbezp.csv");
 	delete bezp;*/
 
-	auto cnik_thom = crankanicolson_thomasa(h, deltat);
+	/*auto cnik_thom = crankanicolson_thomasa(h, deltat);
 	dumpnet(cnik_thom, "tempcnikthom.csv");
-	delete cnik_thom;
+	delete cnik_thom;*/
+	
+	auto cnik_seid = crankanicolson_gaussa_seidela(h, deltat);
+	dumpnet(cnik_seid, "tempcnikseid.csv");
+	delete cnik_seid;
 
 	cout << "bezp" << endl;
 	auto anal = analityczna(h, deltat);
