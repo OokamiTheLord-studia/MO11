@@ -750,10 +750,67 @@ double rozw_analityczne(double x, double t)
 	return 0.5 * exp(((D * t) / (b * b)) - (x / b)) * erfc((((2 * D * t) / (b)-x)) / (2 * sqrt(D * t)));
 }
 
+double warunek_poczatkowy(double x)
+{
+	return x < 0 ? 0 : exp(-x / b);
+}
+
+struct node {
+	double t;
+	double x;
+	double value;
+};
+
+class net
+{
+private:
+	vector<vector<node>*> body;
+
+public:
+	net(int hcount, double h, int deltatcount, double deltat)
+	{
+		body.reserve(deltatcount);
+
+		double current_t = 0.;
+
+		for (int i = 0; i < deltatcount; i++)
+		{
+			vector<node>* temporary = new vector<node>;
+			temporary->reserve(hcount);
+
+			double current_h = 0.;
+
+			for (int j = 0; j < hcount; j++)
+			{
+				
+				node tempnode = { current_t, current_h, NAN};
+
+				temporary->push_back(tempnode);
+
+				current_h += h;
+			}
+
+			body.push_back(temporary);
+
+			current_t += deltat;
+		}
+	}
+
+	~net()
+	{
+		for (auto it = body.begin(); it != body.end(); it++)
+		{
+			delete *it;
+		}
+	}
+
+	const node* getnode(int x, int y)
+	{
+		return &(body[x]->at(y));
+	}
+};
+
 int main()
 {
-
-
-
 
 }
