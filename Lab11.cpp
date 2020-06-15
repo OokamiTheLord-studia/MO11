@@ -918,6 +918,74 @@ net* analityczna(double h, double deltat)
 
 }
 
+net* crankanicolson_thomasa(double h, double deltat)
+{
+	const double lambda = D * (deltat / (h * h));
+	assert(lambda < 1.2);
+	assert(lambda > 0.8);
+
+
+	int hcount = (2. * a) / h;
+	int deltatcount = tmax / deltat;
+
+	//inicjalizacja
+	net* localnet = new net(hcount, h, deltatcount, deltat);
+	for (int i = 0; i < localnet->getysize(); i++)
+	{
+		auto tnode = localnet->getnode(0, i);
+		tnode->value = warunek_poczatkowy(tnode->x);
+	}
+
+	vector<double> up;
+	vector<double> diag;
+	vector<double> low;
+	up.reserve(localnet->getysize() - 1);
+	diag.reserve(localnet->getysize());
+	low.reserve(localnet->getysize() - 1);
+
+	up.push_back(0);
+	for (int i = 1; i < localnet->getysize()-1; i++)
+	{
+		up.push_back(lambda / 2);
+		low.push_back(lambda / 2);
+	}
+	low.push_back(0);
+
+	diag.push_back(0);
+	for (int i = 1; i < localnet->getysize()-1; i++)
+	{
+		diag.push_back(-(1 + lambda));
+	}
+	diag.push_back(0);
+	
+
+
+
+	//rozwiązanie
+	for (int i = 1; i < localnet->getxsize(); i++)
+	{
+
+		vector<double> b;
+		b.reserve(localnet->getysize());
+		b.push_back(0);
+
+		for (int j = 1; j < localnet->getysize() - 1; j++)
+		{
+			auto node1 = localnet->getnode(i - 1, j - 1);
+			auto node2 = localnet->getnode(i - 1, j);
+			auto node3 = localnet->getnode(i - 1, j + 1);
+
+			b.push_back(-(((lambda / 2) * node1->value) + ((1 - lambda) * node2->value) + ((lambda / 2) * node3->value)));
+		}
+
+		b.push_back(0);
+
+
+
+	}
+
+}
+
 int main()
 {
 	double h = 0.05;
