@@ -7,6 +7,14 @@
 
 using namespace std;
 
+//Definicja struktury node
+struct node {
+	double t;
+	double x;
+	double value;
+};
+
+
 ///Zadanie 6
 class DU
 {
@@ -57,6 +65,7 @@ public:
 	friend void solver(Tridiagonal& tri, DU& du, vector<double>& b, vector<double>& x);
 };
 
+
 class Tridiagonal
 {
 	vector<double> l;
@@ -100,6 +109,7 @@ public:
 	}
 
 	friend void solver(Tridiagonal& tri, DU& du, vector<double>& b, vector<double>& x);
+	friend void node_solver(Tridiagonal& tri, DU& du, vector<double>& b, vector<node>* x);
 };
 
 void solver(Tridiagonal& tri, DU& du, vector<double>& b, vector<double>& x)
@@ -122,6 +132,32 @@ void solver(Tridiagonal& tri, DU& du, vector<double>& b, vector<double>& x)
 	for (int i = locsize - 2; i >= 0; i--)
 	{
 		x[i] = (r[i] - (tri.u[i] * x[i + 1])) / tri.d[i];
+	}
+
+}
+
+
+void node_solver(Tridiagonal& tri, DU& du, vector<double>& b, vector<node>* x)
+{
+	const int locsize = tri.siz;
+
+	if ((locsize != du.siz) || (locsize != b.size())) throw invalid_argument("wektory i macierze musza miec ten sam rozmiar");
+	//x.resize(locsize);
+
+	vector<double> r;
+	r.resize(locsize);
+
+	r[0] = b[0];
+	for (int i = 1; i < locsize; i++)
+	{
+		r[i] = b[i] - ((tri.l[i - 1] * r[i - 1]) / du.d[i - 1]);
+	}
+
+	//x[locsize - 1] = r[locsize - 1] / tri.d[locsize - 1];
+	x->at(locsize -1).value = r[locsize - 1] / tri.d[locsize - 1];
+	for (int i = locsize - 2; i >= 0; i--)
+	{
+		x->at(i).value = (r[i] - (tri.u[i] * x->at(i + 1).value)) / tri.d[i];
 	}
 
 }
@@ -756,11 +792,11 @@ double warunek_poczatkowy(double x)
 	return x < 0 ? 0 : exp(-x / b);
 }
 
-struct node {
-	double t;
-	double x;
-	double value;
-};
+//struct node {
+//	double t;
+//	double x;
+//	double value;
+//};
 
 class net
 {
@@ -825,6 +861,8 @@ public:
 	{
 		return body[0]->size();
 	}
+
+	friend net* crankanicolson_thomasa(double h, double deltat);
 };
 
 
@@ -951,14 +989,16 @@ net* crankanicolson_thomasa(double h, double deltat)
 	}
 	low.push_back(0);
 
-	diag.push_back(0);
+	diag.push_back(1);
 	for (int i = 1; i < localnet->getysize()-1; i++)
 	{
 		diag.push_back(-(1 + lambda));
 	}
-	diag.push_back(0);
+	diag.push_back(1);
 	
-
+	Tridiagonal tri(low, diag, up);
+	DU du(tri.siz);
+	tri.ThomasMatrix(du);
 
 
 	//rozwiązanie
@@ -980,21 +1020,27 @@ net* crankanicolson_thomasa(double h, double deltat)
 
 		b.push_back(0);
 
-
+		node_solver(tri, du, b, localnet->body[i]);
 
 	}
 
+	return localnet;
 }
 
 int main()
 {
 	double h = 0.05;
-	double deltat = h * h * 0.4;
+	//double deltat = h * h * 0.4;
+	double deltat = h * h;
 
 	cout << "start" << endl;
-	auto bezp = bezposrednia_eulera(h, deltat);
+	/*auto bezp = bezposrednia_eulera(h, deltat);
 	dumpnet(bezp, "tempbezp.csv");
-	delete bezp;
+	delete bezp;*/
+
+	auto cnik_thom = crankanicolson_thomasa(h, deltat);
+	dumpnet(cnik_thom, "tempcnikthom.csv");
+	delete cnik_thom;
 
 	cout << "bezp" << endl;
 	auto anal = analityczna(h, deltat);
