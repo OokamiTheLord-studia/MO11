@@ -960,8 +960,8 @@ net* analityczna(double h, double deltat)
 net* crankanicolson_thomasa(double h, double deltat)
 {
 	const double lambda = D * (deltat / (h * h));
-	//assert(lambda < 1.2);
-	//assert(lambda > 0.8);
+	assert(lambda < 1.2);
+	assert(lambda > 0.8);
 
 
 	int hcount = (2. * a) / h;
@@ -1162,7 +1162,7 @@ double maksymalny_blad_bezwzgledny(vector<node>* wyniki_analityczne, vector<node
 		temp.push_back(abs(wyniki_analityczne->at(i).value - wyniki_numeryczne->at(i).value));
 	}
 
-	return *(max_element(temp.begin(), temp.end(), [](node a, node b) {return a.value < b.value; }));
+	return *(max_element(temp.begin(), temp.end()));
 }
 
 void dump_error(net* analitnet, net* paramnet, const char* filename)
@@ -1198,8 +1198,9 @@ int main()
 	FILE* plik;
 	fopen_s(&plik, "zadanie1.csv", "w");
 	fprintf_s(plik, "h,klasyczna metoda bezposrednia,posrednia Cranka-Nicolson Thomasa,posrednia Cranka-Nicolson Gaussa-Seidela\n");
-	for (double h = 0.001; h < 10.; h *= 10)
+	for (double h = 0.03; h < 1; h *= 2)
 	{
+		printf_s("h=%lf\n", h);
 		double deltat = h * h * 0.4;
 		auto analit = analityczna(h, deltat);
 		auto euler = bezposrednia_eulera(h, deltat);
@@ -1207,8 +1208,10 @@ int main()
 		delete analit;
 		delete euler;
 
+		printf_s("euler finished\n");
+
 		deltat = h * h;
-		auto analit = analityczna(h, deltat);
+		analit = analityczna(h, deltat);
 		auto thomas = crankanicolson_thomasa(h, deltat);
 		double max_err_thomas = maksymalny_blad_bezwzgledny(analit->body[analit->body.size() - 1], thomas->body[thomas->body.size() - 1]);
 		delete thomas;
@@ -1224,7 +1227,7 @@ int main()
 	fclose(plik);
 
 	double h = 0.05;
-	double deltat = h * h;
+	double deltat = h * h * 0.4;
 
 	auto analit = analityczna(h, deltat);
 
@@ -1232,6 +1235,10 @@ int main()
 	dumpnet(euler, "bezposrednia_eulera.csv");
 	dump_error(analit, euler, "bezposrednia_eulera_error.csv");
 	delete euler;
+	delete analit;
+
+	deltat = h * h;
+	analit = analityczna(h, deltat);
 
 	auto thomas = crankanicolson_thomasa(h, deltat);
 	dumpnet(thomas, "cranknicolson_thomas.csv");
