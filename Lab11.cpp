@@ -27,7 +27,7 @@ public:
 	DU(int size) :siz(size)
 	{
 		d.resize(siz);
-		u.resize(siz - 1);
+		u.resize(siz - 1.);
 	}
 
 	double at(unsigned int i, unsigned int j)
@@ -103,7 +103,7 @@ public:
 		du.d[0] = d[0];
 		for (int i = 1; i < siz; i++)
 		{
-			du.d[i] = d[i] - ((l[i - 1] * u[i - 1]) / du.d[i - 1]);
+			du.d[i] = d[i] - ((l[i - (size_t) 1] * u[i - (size_t) 1]) / du.d[i - (size_t) 1]);
 		}
 
 	}
@@ -125,13 +125,14 @@ void solver(Tridiagonal& tri, DU& du, vector<double>& b, vector<double>& x)
 	r[0] = b[0];
 	for (int i = 1; i < locsize; i++)
 	{
-		r[i] = b[i] - ((tri.l[i - 1] * r[i - 1]) / du.d[i - 1]);
+
+		r[i] = b[i] - ((tri.l[i - (size_t) 1] * r[i - (size_t) 1]) / du.d[i - (size_t) 1]);
 	}
 
-	x[locsize - 1] = r[locsize - 1] / tri.d[locsize - 1];
+	x[locsize - (size_t) 1] = r[locsize - (size_t) 1] / tri.d[locsize - (size_t) 1];
 	for (int i = locsize - 2; i >= 0; i--)
 	{
-		x[i] = (r[i] - (tri.u[i] * x[i + 1])) / tri.d[i];
+		x[i] = (r[i] - (tri.u[i] * x[i + (size_t) 1])) / tri.d[i];
 	}
 
 }
@@ -150,14 +151,14 @@ void node_solver(Tridiagonal& tri, DU& du, vector<double>& b, vector<node>* x)
 	r[0] = b[0];
 	for (int i = 1; i < locsize; i++)
 	{
-		r[i] = b[i] - ((tri.l[i - 1] * r[i - 1]) / du.d[i - 1]);
+		r[i] = b[i] - ((tri.l[i - (size_t) 1] * r[i - (size_t) 1]) / du.d[i - (size_t) 1]);
 	}
 
 	//x[locsize - 1] = r[locsize - 1] / tri.d[locsize - 1];
-	x->at(locsize -1).value = r[locsize - 1] / tri.d[locsize - 1];
+	x->at(locsize - (size_t) 1).value = r[locsize - (size_t) 1] / tri.d[locsize - (size_t) 1];
 	for (int i = locsize - 2; i >= 0; i--)
 	{
-		x->at(i).value = (r[i] - (tri.u[i] * x->at(i + 1).value)) / tri.d[i];
+		x->at(i).value = (r[i] - (tri.u[i] * x->at(i + (size_t) 1).value)) / tri.d[i];
 	}
 
 }
@@ -273,7 +274,7 @@ private:
 public:
 	FullMatrix(int rozm) : Matrix(rozm)
 	{
-		body.resize(rozm * rozm);
+		body.resize((size_t) rozm * (size_t) rozm);
 	}
 
 	FullMatrix(initializer_list<double> ilist, unsigned int size) : Matrix(size)
@@ -337,12 +338,12 @@ public:
 
 	const double& at(unsigned int i, unsigned int j)
 	{
-		return body[i * siz + j];
+		return body[(size_t) i * (size_t) siz + (size_t) j];
 	}
 
 	double& zapisz(unsigned int i, unsigned int j)
 	{
-		return body[i * siz + j];
+		return body[(size_t) i * (size_t) siz + (size_t) j];
 	}
 
 
@@ -425,7 +426,7 @@ public:
 		}
 		else
 		{
-			return body[j * (j - 1) / 2 + i];
+			return body[(size_t) j * (size_t) (j - 1) / 2 + i];
 		}
 	}
 
@@ -437,7 +438,7 @@ public:
 		}
 		else
 		{
-			return (body[j * (j - 1) / 2 + i]);
+			return (body[(size_t) j * (size_t) ((size_t) j - 1) / 2 + i]);
 		}
 	}
 };
@@ -619,7 +620,7 @@ public:
 		}
 		else
 		{
-			return body.at(i * (i - 1) / 2 + j);
+			return body.at((size_t) i * (size_t) (i - 1) / 2 + j);
 		}
 	}
 
@@ -631,7 +632,7 @@ public:
 		}
 		else
 		{
-			return (body[i * (i - 1) / 2 + j]);
+			return (body[(size_t) i * (size_t) ((size_t) i - 1) / 2 + j]);
 		}
 	}
 };
@@ -800,10 +801,9 @@ double warunek_poczatkowy(double x)
 
 class net
 {
-private:
+public:
 	vector<vector<node>*> body;
 
-public:
 	net(int hcount, double h, int deltatcount, double deltat)
 	{
 		body.reserve(deltatcount);
@@ -813,7 +813,7 @@ public:
 		for (int i = 0; i < deltatcount; i++)
 		{
 			vector<node>* temporary = new vector<node>;
-			temporary->reserve(hcount + 2);
+			temporary->reserve(hcount + (size_t) 2);
 
 			double current_h = -a;
 
@@ -862,7 +862,7 @@ public:
 		return body[0]->size();
 	}
 
-	friend net* crankanicolson_thomasa(double h, double deltat);
+	//friend net* crankanicolson_thomasa(double h, double deltat);
 };
 
 
@@ -960,8 +960,8 @@ net* analityczna(double h, double deltat)
 net* crankanicolson_thomasa(double h, double deltat)
 {
 	const double lambda = D * (deltat / (h * h));
-	assert(lambda < 1.2);
-	assert(lambda > 0.8);
+	//assert(lambda < 1.2);
+	//assert(lambda > 0.8);
 
 
 	int hcount = (2. * a) / h;
@@ -983,14 +983,17 @@ net* crankanicolson_thomasa(double h, double deltat)
 	low.reserve(localnet->getysize() - 1);
 
 	up.push_back(0);
+	//up.push_back(1);
 	for (int i = 1; i < localnet->getysize()-1; i++)
 	{
 		up.push_back(lambda / 2);
 		low.push_back(lambda / 2);
 	}
 	low.push_back(0);
+	//low.push_back(-1);
 
 	diag.push_back(1);
+	//diag.push_back(-1);
 	for (int i = 1; i < localnet->getysize()-1; i++)
 	{
 		diag.push_back(-(1 + lambda));
@@ -1008,11 +1011,12 @@ net* crankanicolson_thomasa(double h, double deltat)
 
 		vector<double> b;
 		b.reserve(localnet->getysize());
-		//b.push_back(0);
+		b.push_back(0);
 		{
-			auto node2 = localnet->getnode(i - 1, 0);
+			/*auto node2 = localnet->getnode(i - 1, 0);
 			auto node3 = localnet->getnode(i - 1, 1);
-			b.push_back(-(((1 - lambda) * node2->value) + ((lambda / 2) * node3->value)));
+			b.push_back(-(((1 - lambda) * node2->value) + ((lambda / 2) * node3->value)));*/
+			//b.push_back(0);
 		}
 		for (int j = 1; j < localnet->getysize() - 1; j++)
 		{
@@ -1023,11 +1027,12 @@ net* crankanicolson_thomasa(double h, double deltat)
 			b.push_back(-(((lambda / 2) * node1->value) + ((1 - lambda) * node2->value) + ((lambda / 2) * node3->value)));
 		}
 
-		//b.push_back(0);
+		b.push_back(0);
 		{
-			auto node1 = localnet->getnode(i - 1, localnet->getysize() - 2);
+			/*auto node1 = localnet->getnode(i - 1, localnet->getysize() - 2);
 			auto node2 = localnet->getnode(i - 1, localnet->getysize() - 1);
-			b.push_back(-(((lambda / 2) * node1->value) + ((1 - lambda) * node2->value)));
+			b.push_back(-(((lambda / 2) * node1->value) + ((1 - lambda) * node2->value)));*/
+			//b.push_back(0);
 		}
 		node_solver(tri, du, b, localnet->body[i]);
 
@@ -1036,6 +1041,7 @@ net* crankanicolson_thomasa(double h, double deltat)
 	return localnet;
 }
 
+//TODO: Możliwe, że trzeba poprawić warunki brzegowe
 net* crankanicolson_gaussa_seidela(double h, double deltat)
 {
 	const double lambda = D * (deltat / (h * h));
@@ -1096,10 +1102,11 @@ net* crankanicolson_gaussa_seidela(double h, double deltat)
 
 		Wector b(localnet->getysize());
 		{
-			auto node2 = localnet->getnode(i - 1, 0);
+			/*auto node2 = localnet->getnode(i - 1, 0);
 			auto node3 = localnet->getnode(i - 1, 1);
-			b.zapisz(0) = -(((1 - lambda) * node2->value) + ((lambda / 2) * node3->value));
+			b.zapisz(0) = -(((1 - lambda) * node2->value) + ((lambda / 2) * node3->value));*/
 		}
+		b.zapisz(0) = 0;
 		for (int j = 1; j < localnet->getysize() - 1; j++)
 		{
 			auto node1 = localnet->getnode(i - 1, j - 1);
@@ -1109,10 +1116,11 @@ net* crankanicolson_gaussa_seidela(double h, double deltat)
 			b.zapisz(j) = -(((lambda / 2) * node1->value) + ((1 - lambda) * node2->value) + ((lambda / 2) * node3->value));
 		}
 		{
-			auto node1 = localnet->getnode(i - 1, localnet->getysize() - 2);
+			/*auto node1 = localnet->getnode(i - 1, localnet->getysize() - 2);
 			auto node2 = localnet->getnode(i - 1, localnet->getysize() - 1);
-			b.zapisz(localnet->getysize() -1) = -(((lambda / 2) * node1->value) + ((1 - lambda) * node2->value));
+			b.zapisz(localnet->getysize() -1) = -(((lambda / 2) * node1->value) + ((1 - lambda) * node2->value));*/
 		}
+		b.zapisz(localnet->getysize() - 1) = 0;
 
 		do
 		{
@@ -1143,34 +1151,100 @@ net* crankanicolson_gaussa_seidela(double h, double deltat)
 	return localnet;
 }
 
+double maksymalny_blad_bezwzgledny(vector<node>* wyniki_analityczne, vector<node>* wyniki_numeryczne)
+{
+	assert(wyniki_analityczne->size() == wyniki_numeryczne->size());
+	vector<double> temp;
+	temp.reserve(wyniki_analityczne->size());
+
+	for (size_t i = 0; i < wyniki_analityczne->size(); i++)
+	{
+		temp.push_back(abs(wyniki_analityczne->at(i).value - wyniki_numeryczne->at(i).value));
+	}
+
+	return *(max_element(temp.begin(), temp.end(), [](node a, node b) {return a.value < b.value; }));
+}
+
+void dump_error(net* analitnet, net* paramnet, const char* filename)
+{
+	assert(analitnet->getxsize() == paramnet->getxsize());
+	assert(analitnet->getysize() == paramnet->getysize());
+
+	FILE* plik;
+	fopen_s(&plik, filename, "w");
+
+	fprintf_s(plik, "t,error\n");
+
+	for (int i = 0; i < analitnet->getxsize(); i++)
+	{
+		double t = analitnet->getnode(i, 0)->t;
+
+		double max_err = maksymalny_blad_bezwzgledny(analitnet->body[i], paramnet->body[i]);
+
+		fprintf_s(plik, "%.16lf,%.16lf\n", t, max_err);
+	}
+
+	fclose(plik);
+	
+}
+
+
 int main()
 {
-	double h = 0.05;
+	//double h = 0.001;
 	//double deltat = h * h * 0.4;
+	
+	//Zadanie 1
+	FILE* plik;
+	fopen_s(&plik, "zadanie1.csv", "w");
+	fprintf_s(plik, "h,klasyczna metoda bezposrednia,posrednia Cranka-Nicolson Thomasa,posrednia Cranka-Nicolson Gaussa-Seidela\n");
+	for (double h = 0.001; h < 10.; h *= 10)
+	{
+		double deltat = h * h * 0.4;
+		auto analit = analityczna(h, deltat);
+		auto euler = bezposrednia_eulera(h, deltat);
+		double max_err_euler = maksymalny_blad_bezwzgledny(analit->body[analit->body.size() - 1], euler->body[euler->body.size() - 1]);
+		delete analit;
+		delete euler;
+
+		deltat = h * h;
+		auto analit = analityczna(h, deltat);
+		auto thomas = crankanicolson_thomasa(h, deltat);
+		double max_err_thomas = maksymalny_blad_bezwzgledny(analit->body[analit->body.size() - 1], thomas->body[thomas->body.size() - 1]);
+		delete thomas;
+
+		auto gauss = crankanicolson_gaussa_seidela(h, deltat);
+		double max_err_gauss = maksymalny_blad_bezwzgledny(analit->body[analit->body.size() - 1], gauss->body[gauss->body.size() - 1]);
+		delete gauss;
+		delete analit;
+
+		fprintf_s(plik, "%.4lf,%.16lf,%.16lf,%.16lf\n", h, max_err_euler, max_err_thomas, max_err_gauss);
+
+	}
+	fclose(plik);
+
+	double h = 0.05;
 	double deltat = h * h;
 
-	cout << "start" << endl;
-	/*auto bezp = bezposrednia_eulera(h, deltat);
-	dumpnet(bezp, "tempbezp.csv");
-	delete bezp;*/
+	auto analit = analityczna(h, deltat);
 
-	/*auto cnik_thom = crankanicolson_thomasa(h, deltat);
-	dumpnet(cnik_thom, "tempcnikthom.csv");
-	delete cnik_thom;*/
-	
-	auto cnik_seid = crankanicolson_gaussa_seidela(h, deltat);
-	dumpnet(cnik_seid, "tempcnikseid.csv");
-	delete cnik_seid;
+	auto euler = bezposrednia_eulera(h, deltat);
+	dumpnet(euler, "bezposrednia_eulera.csv");
+	dump_error(analit, euler, "bezposrednia_eulera_error.csv");
+	delete euler;
 
-	cout << "bezp" << endl;
-	auto anal = analityczna(h, deltat);
-	cout << "anal" << endl;
+	auto thomas = crankanicolson_thomasa(h, deltat);
+	dumpnet(thomas, "cranknicolson_thomas.csv");
+	dump_error(analit, thomas, "cranknicolson_thomas_error.csv");
+	delete thomas;
 
-	
-	dumpnet(anal, "tempanal.csv");
+	auto gauss = crankanicolson_gaussa_seidela(h, deltat);
+	dumpnet(gauss, "cranknicolson_gauss_seidel.csv");
+	dump_error(analit, gauss, "cranknicolson_gauss_seidel_error.csv");
+	delete gauss;
 
-	
-	delete anal;
+	dumpnet(analit, "analityczna.csv");
+	delete analit;
 
 	return 0;
 }
